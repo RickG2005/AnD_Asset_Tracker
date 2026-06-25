@@ -1,0 +1,12 @@
+# Ignore python virtual environments
+.venv/
+__pycache__/
+*.pyc
+
+# Ignore STM32 build output files
+build/
+*.o
+*.elf
+*.bin
+*.map
+*.d
