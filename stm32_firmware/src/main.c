@@ -2,6 +2,7 @@
 #include "lcd.h"
 #include "uart_stream.h"
 #include <stdio.h>
+#include "led_status.h"
 
 
 extern void _estack(void);
@@ -22,6 +23,43 @@ __attribute__((naked)) void Reset_Handler(void) {
     );
 }
 
+void Run_TelemetryDisplayTask(void) {
+
+    struct VehicleDataPacket tracking_data;
+    char text_buffer[20];
+
+    LCD_Clear();
+    LCD_PrintString("Waiting...");
+
+    while(1){
+
+        if (UART1_CheckForPacket(&tracking_data) == 1){
+
+            LCD_Clear();
+
+            //Display Latitude
+            long lat_deg = tracking_data.latitude / 1000000;
+            long lat_frac = tracking_data.latitude % 1000000;
+            if (lat_frac < 0) lat_frac = -lat_frac;
+
+            snprintf(text_buffer, sizeof(text_buffer), "Lat:%ld.%06ld", lat_deg, lat_frac);
+            LCD_PrintString(text_buffer);
+
+            LCD_SendCommand(0xC0);
+
+            //Display Longitude
+            long lon_deg = tracking_data.longitude / 1000000;
+            long lon_frac = tracking_data.longitude % 1000000;
+            if (lon_frac < 0) lon_frac = -lon_frac;
+            
+            snprintf(text_buffer, sizeof(text_buffer), "Lon:%ld.%06ld", lon_deg, lon_frac);
+            LCD_PrintString(text_buffer);
+
+            LED_Toggle();
+
+        }
+    }
+}
 
 int main (void) {
     extern uint8_t rx_index;
@@ -31,35 +69,10 @@ int main (void) {
 
     UART1_Init();
     LCD_Init();
-    LCD_Clear();
-    LCD_PrintString("Waiting...");
+    LED_Status_Init();
 
-    struct VehicleDataPacket tracking_data;
-    char text_buffer[20];
+    Run_TelemetryDisplayTask();
 
-    while(1){
-        while (UART1_CheckForPacket(&tracking_data) == 0){
-        //do nothing
-        }
-
-        LCD_Clear();
-
-        long lat_deg = tracking_data.latitude / 1000000;
-        long lat_frac = tracking_data.latitude % 1000000;
-        if (lat_frac < 0) lat_frac = -lat_frac;
-
-        snprintf(text_buffer, sizeof(text_buffer), "Lat:%ld.%06ld", lat_deg, lat_frac);
-        LCD_PrintString(text_buffer);
-
-        LCD_SendCommand(0xC0);
-
-        long lon_deg = tracking_data.longitude / 1000000;
-        long lon_frac = tracking_data.longitude % 1000000;
-        if (lon_frac < 0) lon_frac = -lon_frac;
-        
-        snprintf(text_buffer, sizeof(text_buffer), "Lon:%ld.%06ld", lon_deg, lon_frac);
-        LCD_PrintString(text_buffer);
-        
-    }
+    while(1);
 
 }
