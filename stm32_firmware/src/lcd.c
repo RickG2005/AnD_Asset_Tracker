@@ -1,13 +1,32 @@
 #include "lcd.h"
+#include "stm32f1xx.h"
+
 
 void LCD_Init(void) {
+    // 1. Enable Clocks for GPIOB and I2C1
+    RCC->APB2ENR |= (1 << 3);  // Enable GPIOB Clock (Bit 3)
+    RCC->APB1ENR |= (1 << 21); // Enable I2C1 Clock (Bit 21)
+
+    // 2. Configure PB6 (SCL) and PB7 (SDA) as Alternate Function Open-Drain (50MHz)
+    // CNF = 11 (Alt Function Open-Drain), MODE = 11 (Output 50MHz) -> 0xF for each pin
+    GPIOB->CRL &= ~(0xFF << 24); // Clear configurations for PB6 and PB7
+    GPIOB->CRL |= (0xFF << 24);  // Set PB6 and PB7 to 0x4F (Alternate Function Open-Drain)
+
+    // 3. Initialize I2C Peripheral Configurations
+    I2C1->CR2 = 36;              // Set I2C peripheral clock frequency (Assuming 36MHz APB1)
+    I2C1->CCR = 180;             // Configure clock control for Standard Mode (100kHz)
+    I2C1->TRISE = 37;            // Set maximum rise time
+    I2C1->CR1 |= (1 << 0);       // Enable I2C1 Peripheral (PE = 1)
+
+    // 4. Generate I2C START condition and send target address
     I2C1->CR1 |= (1 << 8);                     // Generate I2C START condition
     while (!(I2C1->SR1 & (1 << 0)));           // Wait for SB (Start Bit) flag to set
     
-    I2C1->DR = (0x27 << 1);                    // Send LCD I2C Address (0x27) shifted for Write (bit 0 = 0)
+    I2C1->DR = (0x27 << 1);                    // Send LCD I2C Address (0x27) shifted for Write
     while (!(I2C1->SR1 & (1 << 1)));           // Wait for ADDR flag to set
     (void)I2C1->SR2;                           // Read SR2 to clear ADDR flag state
 
+    // 5. HD44780 LCD Core Initialization Sequence (4-bit mode)
     for(volatile int d = 0; d < 50000; d++); 
 
     LCD_WriteNibble(0x30, 0x00);
@@ -19,17 +38,15 @@ void LCD_Init(void) {
     LCD_WriteNibble(0x30, 0x00);
     for(volatile int d = 0; d < 5000; d++);
     
-    // Actively switch the internal hardware state to 4-bit bus mode
-    LCD_WriteNibble(0x20, 0x00); 
+    LCD_WriteNibble(0x20, 0x00);               // Actively switch internal state to 4-bit bus mode
     for(volatile int d = 0; d < 10000; d++);
 
-    // 4. Functional Execution Configurations
-    LCD_SendCommand(0x28); // Function Set: 4-bit mode, 2-line display, 5x8 font formatting
+    // 6. Functional Execution Configurations
+    LCD_SendCommand(0x28); // Function Set: 4-bit mode, 2-line display, 5x8 font
     LCD_SendCommand(0x0C); // Display Control: Turn display ON, cursor OFF, blink OFF
-    LCD_SendCommand(0x06); // Entry Mode Set: Increment cursor automatically, shift off
+    LCD_SendCommand(0x06); // Entry Mode Set: Increment cursor automatically
     
-    // Wipe the screen clean and set cursor to line 1, position 0
-    LCD_Clear(); 
+    LCD_Clear();           // Wipe the screen clean
 }
 
 // Low-level function to stream a nibble and toggle the Enable pin (0x04)

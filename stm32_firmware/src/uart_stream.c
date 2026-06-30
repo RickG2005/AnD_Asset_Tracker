@@ -2,8 +2,8 @@
 #include <string.h>
 
 static uint8_t rx_buffer[15]; 
-static uint8_t rx_index = 0;   
-static uint8_t rx_state = 0;
+uint8_t rx_index = 0;   
+int8_t rx_state = 0;
 
 void UART1_Init(void){
     RCC->APB2ENR |= (1<<2);
