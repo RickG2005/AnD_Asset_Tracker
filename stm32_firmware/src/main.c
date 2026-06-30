@@ -22,6 +22,7 @@ __attribute__((naked)) void Reset_Handler(void) {
     );
 }
 
+
 int main (void) {
     extern uint8_t rx_index;
     extern uint8_t rx_state;
@@ -43,14 +44,22 @@ int main (void) {
 
         LCD_Clear();
 
-        snprintf(text_buffer, sizeof(text_buffer), "Lat:%ld", tracking_data.latitude);
+        long lat_deg = tracking_data.latitude / 1000000;
+        long lat_frac = tracking_data.latitude % 1000000;
+        if (lat_frac < 0) lat_frac = -lat_frac;
+
+        snprintf(text_buffer, sizeof(text_buffer), "Lat:%ld.%06ld", lat_deg, lat_frac);
         LCD_PrintString(text_buffer);
 
         LCD_SendCommand(0xC0);
 
-        snprintf(text_buffer, sizeof(text_buffer), "Lon:%ld", tracking_data.longitude);
+        long lon_deg = tracking_data.longitude / 1000000;
+        long lon_frac = tracking_data.longitude % 1000000;
+        if (lon_frac < 0) lon_frac = -lon_frac;
+        
+        snprintf(text_buffer, sizeof(text_buffer), "Lon:%ld.%06ld", lon_deg, lon_frac);
         LCD_PrintString(text_buffer);
-
         
     }
+
 }
