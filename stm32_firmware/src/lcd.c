@@ -1,5 +1,37 @@
 #include "lcd.h"
 
+void LCD_Init(void) {
+    I2C1->CR1 |= (1 << 8);                     // Generate I2C START condition
+    while (!(I2C1->SR1 & (1 << 0)));           // Wait for SB (Start Bit) flag to set
+    
+    I2C1->DR = (0x27 << 1);                    // Send LCD I2C Address (0x27) shifted for Write (bit 0 = 0)
+    while (!(I2C1->SR1 & (1 << 1)));           // Wait for ADDR flag to set
+    (void)I2C1->SR2;                           // Read SR2 to clear ADDR flag state
+
+    for(volatile int d = 0; d < 50000; d++); 
+
+    LCD_WriteNibble(0x30, 0x00);
+    for(volatile int d = 0; d < 20000; d++);
+    
+    LCD_WriteNibble(0x30, 0x00);
+    for(volatile int d = 0; d < 5000; d++);
+    
+    LCD_WriteNibble(0x30, 0x00);
+    for(volatile int d = 0; d < 5000; d++);
+    
+    // Actively switch the internal hardware state to 4-bit bus mode
+    LCD_WriteNibble(0x20, 0x00); 
+    for(volatile int d = 0; d < 10000; d++);
+
+    // 4. Functional Execution Configurations
+    LCD_SendCommand(0x28); // Function Set: 4-bit mode, 2-line display, 5x8 font formatting
+    LCD_SendCommand(0x0C); // Display Control: Turn display ON, cursor OFF, blink OFF
+    LCD_SendCommand(0x06); // Entry Mode Set: Increment cursor automatically, shift off
+    
+    // Wipe the screen clean and set cursor to line 1, position 0
+    LCD_Clear(); 
+}
+
 // Low-level function to stream a nibble and toggle the Enable pin (0x04)
 void LCD_WriteNibble(uint8_t data, uint8_t control_flags) {
     // 1. Send data with Enable HIGH
